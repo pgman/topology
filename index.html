@@ -168,7 +168,7 @@ $(() => {
 		let s = '';
 		a.forEach((x, i) => {
 			if(!$('#tex-code-checkbox').prop('checked')) {
-				s += `O_${i}={`;
+				s += `O_${i + 1}={`;
 				x.forEach((e, i) => {
 					if(i === 0) {
 						s += 'Φ';
@@ -180,7 +180,7 @@ $(() => {
 				});
 				s += '}\n';
 			} else {
-				s += `&&\\mathfrak{O}_{${i}}=\\{`;
+				s += `&&\\mathfrak{O}_{${i + 1}}=\\{`;
 				x.forEach((e, i) => {
 					if(i === 0) {
 						s += '\\varnothing';
