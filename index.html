@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Topology</title>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(() => {
+	let _s = [];
+	let _trueCnt = 0;
+	let _curIndex = 0;
+	let _intervalId = -1;
+	const _INTERVAL = 50;
+	const _PROCESS_TIMES = 20; // 何回実行したらCPUを休ませるか
+
+	function okClick() {
+		if(_intervalId >= 0) { return; }
+
+		// t: 'p,q,r'
+		let t = $('#input-text').val();		
+		// c: 'pqr'
+		const c = t.split(' ').join('').split(',');
+		if(c.length === 1 && c[0] === '') {
+			alert('too short');
+			return;
+		}
+		if(c.length > 4) {
+			alert('too much!');
+			return;
+		}
+
+		_s = [];
+		_trueCnt = 0;
+		_curIndex = 0;
+		_intervalId = -1;
+
+		$("#input-text, #ok-button, #use-s-checkbox, #tex-code-checkbox").prop("disabled", true);
+		$('#count').text(_trueCnt);
+		$('#textarea').val('Please wait...');		
+
+		// べき集合の数
+		const n2 = Math.round(Math.pow(2, c.length));
+
+		// 「べき集合のインデックスのべき集合」を作成
+		let a = powerSet(n2, true);
+
+		// 「べき集合のインデックスのべき集合」 から Φとべき集合 を含むものを抽出
+		// 条件1についてはここでやる
+		a = powerSetCondition1(a, n2);
+
+		// 「べき集合」を求める
+		let o = powerSet(c.length, true);
+
+		// UIスレッドが固まらないようにここでやる
+		_intervalId = setInterval(() => {
+			condition23(a, o, c);
+		}, _INTERVAL);			
+	}	
+
+	function finishProc(s, o, c) {
+		clearInterval(_intervalId);
+		_intervalId = -1;
+
+		$("#input-text, #ok-button, #use-s-checkbox, #tex-code-checkbox").prop("disabled", false);
+
+		// 候補の集合にする
+		s = s.map(e => e.map(e => o[e]));
+
+		// 集合を指定された文字列に変換する
+		s = s.map(e => e.map(e => e.reduce((p, _, i) => p + c[e[i]],'')));	
+		logSet(s);
+	}
+
+	function condition23(a, o, c) {
+		// 条件を満たすものだけを pushする
+		let s = [];
+
+		for(let i = _curIndex;; i += 1) {
+
+			// 「べき集合のインデックスのべき集合」を作成
+			let ia = powerSet(a[i].length, true);
+			ia = ia.map(e => e.map(e => a[i][e]));
+			ia = ia.map(e => e.map(e => o[e]));
+
+			let u = ia.map(e => arrayUnion(e).sort().toString());			
+
+			let aa = a[i].map(e => o[e].sort().toString());			
+
+			const ret2 = u.every(u => aa.includes(u));
+			if(ret2) {
+				let iu = ia.map(e => arrayIntersection(e).sort().toString());
+				const ret3 = iu.every(u => aa.includes(u));
+				if(ret3) {	
+					_trueCnt++;
+					_s.push(a[i]);
+				} else {
+
+				}
+			} else {				
+			}
+
+			_curIndex++;
+			if(_curIndex >= a.length) {
+				$('#textarea').val('100%');
+				$('#count').text(_trueCnt);
+				finishProc(_s, o, c);
+				break;
+			}
+			if(_curIndex % _PROCESS_TIMES === 0) {
+				$('#textarea').val('Please wait...' + (100 * (_curIndex - 1) / a.length).toFixed(2) + '%');
+				$('#count').text(_trueCnt);
+				break;
+			}
+		}
+	}
+
+	function arrayUnion(a) {
+		return a.reduce((p, c) => union(p, c) ,[]);
+	}
+
+	function arrayIntersection(a) {
+		if(a.length === 0) { return []; }
+		return a.reduce((p, c) => intersection(p, c) , a[0]);
+	}
+
+	// 和集合
+    function union(a, b) {
+        return a.concat(b).filter((e, i, r) => r.indexOf(e) === i);
+    }
+
+    // 共通部分
+    function intersection(a, b) {
+        return a.filter(e => b.includes(e));
+    }
+
+    // 部分集合か判定 (a⊂b なら true を返す)
+	function isSubset(a, b) {
+		return a.every(e => b.includes(e));
+	}
+
+	function powerSetCondition1(p, n) {
+		return p.filter(e => e.includes(0) && e.includes(n - 1));
+	}
+
+	function powerSet(n = 0, sorting = false) {
+		if (!Number.isInteger(n) || n < 0) {
+			throw new Error('parameter must be non-negative integer');
+		}
+		if (n === 0) {
+			return [[]];
+		}
+		const prev1 = powerSet(n-1),
+		    prev2 = prev1.map(a => [...a, n-1]);
+		return sorting ? [...prev1, ...prev2].sort(arrayCompare) : [...prev1, ...prev2];
+	}
+	function arrayCompare(a1, a2) {
+		const lenDiff = a1.length - a2.length;
+		if (lenDiff) {
+			return lenDiff;
+		}
+		const i =  a1.findIndex((e, j) => e - a2[j] !== 0);
+		return i >= 0 ? a1[i] - a2[i] : 0;
+	}
+	function setToChar(s, c) {
+		s.map(e => {});
+	}
+	function logSet(a) {
+		let s = '';
+		a.forEach((x, i) => {
+			if(!$('#tex-code-checkbox').prop('checked')) {
+				s += `O_${i}={`;
+				x.forEach((e, i) => {
+					if(i === 0) {
+						s += 'Φ';
+					} else if($('#use-s-checkbox').prop('checked') && i === x.length - 1) {
+						s += ',S'
+					} else {
+						s += ',{' + e.replace(/(.)(?=.)/g, "$1,") + '}';
+					}
+				});
+				s += '}\n';
+			} else {
+				s += `&&\\mathfrak{O}_{${i}}=\\{`;
+				x.forEach((e, i) => {
+					if(i === 0) {
+						s += '\\varnothing';
+					} else if($('#use-s-checkbox').prop('checked') && i === x.length - 1) {
+						s += ',S'
+					} else {
+						s += ',\\{' + e.replace(/(.)(?=.)/g, "$1,") + '\\}';
+					}
+				});
+				s += '\\}\\\\\n';
+			}
+		});
+		$('#textarea').val(s);
+	}
+
+	// init value
+	$('#use-s-checkbox').prop('checked', true);
+	$('#tex-code-checkbox').prop('checked', false);	
+	$('#input-text').val('p,q,r');
+	okClick();
+
+	// event handler
+	$('#ok-button').click(okClick);
+	$('#input-text').keydown(e => {
+		if (e.keyCode === 13) {
+			okClick();
+		}
+	});
+});
+</script>
+<style>
+#textarea {
+	margin-top: 20px;
+	width: 1000px;
+	height: 600px;
+	resize: none;
+}
+#input-text {
+	width: 100px;
+}
+* {
+	font-size: 18px;
+}
+</style>
+</head>
+<body>
+S={<input id="input-text" type="text">}&nbsp;
+<input id="ok-button" type="button" value="OK">&nbsp;<br><br>
+<input type="checkbox" id="use-s-checkbox" /><label for="use-s-checkbox">display as S</label><br>
+<input type="checkbox" id="tex-code-checkbox" /><label for="tex-code-checkbox">display as tex code</label><br>
+<span id="count"></span><br>
+<textarea id="textarea"></textarea>
+</body>
+</html>
